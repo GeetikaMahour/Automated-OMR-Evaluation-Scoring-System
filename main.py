@@ -1,6 +1,3 @@
-# ==============================
-# AUTOMATED OMR EVALUATION & SCORING SYSTEM
-# ==============================
 import streamlit as st
 import cv2
 import numpy as np
@@ -96,35 +93,134 @@ def score_student(student_answers, answer_key):
     return scores
 
 # -------------------------
-# STREAMLIT UI
+# STREAMLIT UI (Stylized)
 # -------------------------
-st.title("Automated OMR Evaluation & Scoring System")
-st.write("Upload OMR sheet images to detect and score answers automatically.")
+
+# Inject custom CSS to create the dashboard look
+st.markdown("""
+<style>
+    /* Dark theme base */
+    .stApp {
+        background-color: #0d122b;
+        color: #f0f4f8;
+        font-family: Arial, sans-serif;
+    }
+
+    /* Main container and content */
+    .main .block-container {
+        padding: 5rem 10rem;
+        display: flex;
+        flex-direction: column;
+        align-items: center; /* Center everything horizontally */
+    }
+
+    /* Center the main title */
+    h1 {
+        text-align: center;
+        width: 100%;
+        font-size: 3rem;
+        font-weight: bold;
+        margin-bottom: 0.5rem;
+    }
+
+    /* Set text color for labels */
+    .st-emotion-cache-1g08969 label, .st-emotion-cache-13ln4j7 p {
+        color: #aeb4bc !important;
+    }
+    
+    /* Dropdown color and text (More aggressive selectors) */
+    div[data-testid="stSelectbox"] div[data-baseweb="select"] > div:first-child {
+        background-color: #FFD700 !important; /* Golden color */
+        color: #0d122b !important; /* Dark text for visibility */
+    }
+
+    div[data-testid="stSelectbox"] div[data-baseweb="select"] svg {
+        fill: #0d122b !important;
+    }
+
+    /* Dropdown list when open */
+    div[data-baseweb="popover"] div[role="listbox"] {
+        background-color: #1a233b !important;
+        border: 1px solid #FFD700 !important;
+    }
+    div[data-baseweb="popover"] div[role="option"] {
+        color: #f0f4f8 !important;
+    }
+    div[data-baseweb="popover"] div[role="option"]:hover {
+        background-color: #2e3e5c !important;
+    }
+
+
+    /* File Uploader and Buttons */
+    .st-emotion-cache-1m4j18p.e1nzilvr2 {
+        color: #f0f4f8;
+    }
+    .st-emotion-cache-4oy39w.e1nzilvr4 { /* Download button */
+        color: #0d122b;
+        background-color: #ffcc00; /* Accent color */
+        font-weight: bold;
+    }
+    .st-emotion-cache-4oy39w.e1nzilvr4:hover {
+        background-color: #e5b800;
+    }
+
+    /* Success message */
+    .st-emotion-cache-1b2q7o7.e1gf0gq52 {
+        background-color: #1a233b;
+        color: #aeb4bc;
+    }
+
+    /* Dataframe Styling */
+    .st-emotion-cache-1q4wz14 {
+        background-color: #1a233b;
+        border-radius: 0.5rem;
+        border: 1px solid #2e3e5c;
+    }
+    .st-emotion-cache-1q4wz14 table {
+        color: #f0f4f8;
+    }
+    .st-emotion-cache-1q4wz14 th {
+        color: #aeb4bc;
+    }
+    .st-emotion-cache-1q4wz14 tbody tr:hover {
+        background-color: #2e3e5c;
+    }
+    
+</style>
+""", unsafe_allow_html=True)
+
+
+# The UI structure
+st.header("Automated OMR Evaluation & Scoring System")
+st.write("Upload OMR sheets to automatically detect and score answers.")
 
 set_option = st.selectbox(
     "Select the question paper set:",
     ("Set A", "Set B")
 )
 
-uploaded_files = st.file_uploader("Upload OMR images", type=["jpg","jpeg","png"], accept_multiple_files=True)
+uploaded_files = st.file_uploader(
+    "Upload OMR images", 
+    type=["jpg", "jpeg", "png"], 
+    accept_multiple_files=True
+)
 
 if uploaded_files:
-    # Select the correct answer key based on user's choice
     if set_option == "Set A":
         current_answer_key = answer_key_A
     else:
         current_answer_key = answer_key_B
         
     if current_answer_key is None:
-        st.error(f"Could not find the answer key file for {set_option}. Please ensure setB.json is in the answer_keys folder.")
+        st.error(f"Could not find the answer key for {set_option}. Please ensure setB.json is in the answer_keys folder.")
     else:
-        all_results=[]
+        all_results = []
         for uploaded_file in uploaded_files:
             img = Image.open(uploaded_file).convert("RGB")
-            img_cv = np.array(img)[:,:,::-1].copy()
+            img_cv = np.array(img)[:, :, ::-1].copy()
             thresh = preprocess_image(img_cv)
             bubbles = detect_bubbles(thresh)
-            student_answers = map_bubbles_to_answers(bubbles,thresh)
+            student_answers = map_bubbles_to_answers(bubbles, thresh)
             scores = score_student(student_answers, current_answer_key)
             
             result = {"student_id": uploaded_file.name.split(".")[0]}
@@ -133,11 +229,14 @@ if uploaded_files:
             
             all_results.append(result)
         
-        df_results=pd.DataFrame(all_results)
+        df_results = pd.DataFrame(all_results)
         st.success("✅ Scoring completed!")
         st.dataframe(df_results)
         
-        # Save CSV
-        csv_file="./results/omr_scored_results.csv"
-        df_results.to_csv(csv_file,index=False)
-        st.download_button("Download CSV", data=open(csv_file,"rb"),file_name="omr_scored_results.csv")
+        csv_file = "./results/omr_scored_results.csv"
+        df_results.to_csv(csv_file, index=False)
+        st.download_button(
+            "Download CSV",
+            data=open(csv_file, "rb"),
+            file_name="omr_scored_results.csv"
+        )
